@@ -5,10 +5,17 @@ import { ProcessCard } from '@/components/ProcessCard';
 import { CreateProcessDialog } from '@/components/CreateProcessDialog';
 import { ProcessDetailSheet } from '@/components/ProcessDetailSheet';
 import { AppSidebar } from '@/components/AppSidebar';
-import { Process, ProcessStatus, STATUS_LABELS } from '@/types/process';
+import { Process, ProcessStatus, STATUS_LABELS, STATUS_SECTOR_MAP } from '@/types/process';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Search, Package, Clock, CheckCircle2, AlertTriangle } from 'lucide-react';
+import { Search, Package, Clock, CheckCircle2, AlertTriangle, Building2, ArrowLeft } from 'lucide-react';
+import { Button } from '@/components/ui/button';
+
+const SECTORS = ['Planejamento', 'Almoxarifado', 'NTI', 'Patrimônio', 'Concluído'] as const;
+
+function getProcessSector(process: Process): string {
+  return STATUS_SECTOR_MAP[process.currentStatus] || 'Desconhecido';
+}
 
 export default function Dashboard() {
   const { processes } = useProcesses();
@@ -16,21 +23,27 @@ export default function Dashboard() {
   const [selectedProcess, setSelectedProcess] = useState<Process | null>(null);
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState<string>('all');
+  const [sectorFilter, setSectorFilter] = useState<string | null>(null);
 
   const filtered = processes.filter(p => {
     const matchesSearch = p.itemName.toLowerCase().includes(search.toLowerCase()) ||
       p.processNumber.toLowerCase().includes(search.toLowerCase());
     const matchesStatus = statusFilter === 'all' || p.currentStatus === statusFilter;
-    return matchesSearch && matchesStatus;
+    const matchesSector = !sectorFilter || getProcessSector(p) === sectorFilter;
+    return matchesSearch && matchesStatus && matchesSector;
   });
 
   const stats = {
     total: processes.length,
     aguardando: processes.filter(p => p.currentStatus === 'aguardando_recebimento').length,
-    emAndamento: processes.filter(p => !['aguardando_recebimento', 'entregue', 'pendencia_fornecedor'].includes(p.currentStatus)).length,
     pendencias: processes.filter(p => ['em_desacordo', 'pendencia_fornecedor'].includes(p.currentStatus)).length,
     concluidos: processes.filter(p => p.currentStatus === 'entregue').length,
   };
+
+  const sectorCounts = SECTORS.map(sector => ({
+    sector,
+    count: processes.filter(p => getProcessSector(p) === sector).length,
+  }));
 
   return (
     <div className="min-h-screen bg-background">
@@ -49,13 +62,42 @@ export default function Dashboard() {
             )}
           </div>
 
-          {/* Stats */}
-          <div className="grid grid-cols-4 gap-4 mb-8">
+          {/* Status Stats */}
+          <div className="grid grid-cols-4 gap-4 mb-4">
             <StatCard icon={<Package className="w-5 h-5" />} label="Total de Processos" value={stats.total} color="primary" />
             <StatCard icon={<Clock className="w-5 h-5" />} label="Aguardando" value={stats.aguardando} color="warning" />
             <StatCard icon={<AlertTriangle className="w-5 h-5" />} label="Pendências" value={stats.pendencias} color="danger" />
             <StatCard icon={<CheckCircle2 className="w-5 h-5" />} label="Concluídos" value={stats.concluidos} color="success" />
           </div>
+
+          {/* Sector Stats */}
+          <div className="grid grid-cols-5 gap-3 mb-8">
+            {sectorCounts.map(({ sector, count }) => (
+              <button
+                key={sector}
+                onClick={() => setSectorFilter(prev => prev === sector ? null : sector)}
+                className={`bg-card rounded-xl border p-4 text-left transition-all hover:shadow-md cursor-pointer ${
+                  sectorFilter === sector ? 'border-primary ring-2 ring-primary/20' : 'border-border'
+                }`}
+              >
+                <div className="flex items-center gap-2">
+                  <Building2 className="w-4 h-4 text-muted-foreground" />
+                  <span className="text-xs font-medium text-muted-foreground">{sector}</span>
+                </div>
+                <p className="text-xl font-bold text-foreground mt-1">{count}</p>
+              </button>
+            ))}
+          </div>
+
+          {/* Active sector filter indicator */}
+          {sectorFilter && (
+            <div className="flex items-center gap-2 mb-4">
+              <Button variant="ghost" size="sm" onClick={() => setSectorFilter(null)} className="gap-1 text-muted-foreground">
+                <ArrowLeft className="w-4 h-4" /> Voltar
+              </Button>
+              <span className="text-sm font-medium text-foreground">Processos no setor: {sectorFilter}</span>
+            </div>
+          )}
 
           {/* Filters */}
           <div className="flex gap-3 mb-6">

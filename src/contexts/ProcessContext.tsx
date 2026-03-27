@@ -195,6 +195,10 @@ export function ProcessProvider({ children }: { children: ReactNode }) {
           newStatus = 'patrimonio';
           sector = 'Patrimônio';
           break;
+        case 'encaminhar_patrimonio':
+          newStatus = 'patrimonio';
+          sector = 'Almoxarifado';
+          break;
         case 'entregar':
           newStatus = 'entregue';
           sector = 'Patrimônio';
@@ -222,10 +226,33 @@ export function ProcessProvider({ children }: { children: ReactNode }) {
     }));
   };
 
+  const addObservation = (processId: string, notes: string) => {
+    if (!user) return;
+    setProcesses(prev => prev.map(p => {
+      if (p.id !== processId) return p;
+      const now = new Date().toISOString();
+      const entry: TimelineEntry = {
+        id: `t-${Date.now()}`,
+        processId,
+        status: p.currentStatus,
+        sector: user.role === 'nti' ? 'NTI' : user.role === 'patrimonio' ? 'Patrimônio' : user.role === 'planejamento' ? 'Planejamento' : 'Almoxarifado',
+        userId: user.id,
+        userName: user.name,
+        timestamp: now,
+        notes,
+      };
+      return {
+        ...p,
+        updatedAt: now,
+        timeline: [...p.timeline, entry],
+      };
+    }));
+  };
+
   const getProcess = (id: string) => processes.find(p => p.id === id);
 
   return (
-    <ProcessContext.Provider value={{ processes, addProcess, advanceProcess, updateProcess, deleteProcess, getProcess }}>
+    <ProcessContext.Provider value={{ processes, addProcess, advanceProcess, addObservation, updateProcess, deleteProcess, getProcess }}>
       {children}
     </ProcessContext.Provider>
   );
