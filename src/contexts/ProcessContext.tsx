@@ -6,6 +6,7 @@ interface ProcessContextType {
   processes: Process[];
   addProcess: (data: { processNumber: string; itemName: string; quantity: number; destination: string; isIT: boolean }) => void;
   advanceProcess: (processId: string, action: string, notes?: string, agreement?: 'de_acordo' | 'em_desacordo') => void;
+  addObservation: (processId: string, notes: string) => void;
   updateProcess: (processId: string, data: { processNumber: string; itemName: string; quantity: number; destination: string; isIT: boolean }) => void;
   deleteProcess: (processId: string) => void;
   getProcess: (id: string) => Process | undefined;
