@@ -4,8 +4,10 @@ import { useAuth } from './AuthContext';
 
 interface ProcessContextType {
   processes: Process[];
-  addProcess: (data: { processNumber: string; itemName: string; quantity: number; isIT: boolean }) => void;
+  addProcess: (data: { processNumber: string; itemName: string; quantity: number; destination: string; isIT: boolean }) => void;
   advanceProcess: (processId: string, action: string, notes?: string, agreement?: 'de_acordo' | 'em_desacordo') => void;
+  updateProcess: (processId: string, data: { processNumber: string; itemName: string; quantity: number; destination: string; isIT: boolean }) => void;
+  deleteProcess: (processId: string) => void;
   getProcess: (id: string) => Process | undefined;
 }
 
@@ -17,6 +19,7 @@ const MOCK_PROCESSES: Process[] = [
     processNumber: 'PROC-2024-001',
     itemName: 'Notebook Dell Latitude 5540',
     quantity: 10,
+    destination: 'Departamento de TI',
     currentStatus: 'conferencia_nti',
     isIT: true,
     createdBy: '1',
@@ -34,6 +37,7 @@ const MOCK_PROCESSES: Process[] = [
     processNumber: 'PROC-2024-002',
     itemName: 'Cadeira Ergonômica Escritório',
     quantity: 25,
+    destination: 'Setor Administrativo',
     currentStatus: 'aguardando_recebimento',
     isIT: false,
     createdBy: '1',
@@ -49,6 +53,7 @@ const MOCK_PROCESSES: Process[] = [
     processNumber: 'PROC-2024-003',
     itemName: 'Monitor LG 27"',
     quantity: 15,
+    destination: 'Laboratório de Informática',
     currentStatus: 'pendencia_fornecedor',
     isIT: true,
     createdBy: '1',
@@ -68,6 +73,7 @@ const MOCK_PROCESSES: Process[] = [
     processNumber: 'PROC-2024-004',
     itemName: 'Impressora HP LaserJet',
     quantity: 5,
+    destination: 'Secretaria Geral',
     currentStatus: 'entregue',
     isIT: true,
     createdBy: '1',
@@ -89,7 +95,7 @@ export function ProcessProvider({ children }: { children: ReactNode }) {
   const [processes, setProcesses] = useState<Process[]>(MOCK_PROCESSES);
   const { user } = useAuth();
 
-  const addProcess = (data: { processNumber: string; itemName: string; quantity: number; isIT: boolean }) => {
+  const addProcess = (data: { processNumber: string; itemName: string; quantity: number; destination: string; isIT: boolean }) => {
     if (!user) return;
     const now = new Date().toISOString();
     const id = String(Date.now());
@@ -113,6 +119,34 @@ export function ProcessProvider({ children }: { children: ReactNode }) {
       }],
     };
     setProcesses(prev => [newProcess, ...prev]);
+  };
+
+  const updateProcess = (processId: string, data: { processNumber: string; itemName: string; quantity: number; destination: string; isIT: boolean }) => {
+    if (!user) return;
+    setProcesses(prev => prev.map(p => {
+      if (p.id !== processId) return p;
+      const now = new Date().toISOString();
+      const entry: TimelineEntry = {
+        id: `t-${Date.now()}`,
+        processId,
+        status: p.currentStatus,
+        sector: 'Administração',
+        userId: user.id,
+        userName: user.name,
+        timestamp: now,
+        notes: `Processo editado pelo administrador ${user.name}`,
+      };
+      return {
+        ...p,
+        ...data,
+        updatedAt: now,
+        timeline: [...p.timeline, entry],
+      };
+    }));
+  };
+
+  const deleteProcess = (processId: string) => {
+    setProcesses(prev => prev.filter(p => p.id !== processId));
   };
 
   const advanceProcess = (processId: string, action: string, notes?: string, agreement?: 'de_acordo' | 'em_desacordo') => {
@@ -146,6 +180,14 @@ export function ProcessProvider({ children }: { children: ReactNode }) {
           break;
         case 'pendencia_fornecedor':
           newStatus = 'pendencia_fornecedor';
+          sector = 'Almoxarifado';
+          break;
+        case 'reenviar_nti':
+          newStatus = 'conferencia_nti';
+          sector = 'Almoxarifado';
+          break;
+        case 'reconferencia_almox':
+          newStatus = 'conferencia_almoxarifado';
           sector = 'Almoxarifado';
           break;
         case 'patrimonio':
@@ -182,7 +224,7 @@ export function ProcessProvider({ children }: { children: ReactNode }) {
   const getProcess = (id: string) => processes.find(p => p.id === id);
 
   return (
-    <ProcessContext.Provider value={{ processes, addProcess, advanceProcess, getProcess }}>
+    <ProcessContext.Provider value={{ processes, addProcess, advanceProcess, updateProcess, deleteProcess, getProcess }}>
       {children}
     </ProcessContext.Provider>
   );

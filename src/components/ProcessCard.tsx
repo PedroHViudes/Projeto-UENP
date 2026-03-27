@@ -1,7 +1,7 @@
-import { Process, STATUS_LABELS } from '@/types/process';
+import { Process } from '@/types/process';
 import { StatusBadge } from './StatusBadge';
 import { Card, CardContent } from '@/components/ui/card';
-import { Package, Hash, Calendar, Layers } from 'lucide-react';
+import { Package, Hash, Calendar, Layers, MapPin } from 'lucide-react';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 
@@ -25,7 +25,7 @@ export function ProcessCard({ process, onClick }: ProcessCardProps) {
           <StatusBadge status={process.currentStatus} />
         </div>
 
-        <div className="flex items-center gap-4 text-xs text-muted-foreground">
+        <div className="flex items-center gap-4 text-xs text-muted-foreground flex-wrap">
           <span className="flex items-center gap-1">
             <Layers className="w-3 h-3" />
             Qtd: {process.quantity}
@@ -33,6 +33,10 @@ export function ProcessCard({ process, onClick }: ProcessCardProps) {
           <span className="flex items-center gap-1">
             <Package className="w-3 h-3" />
             {process.isIT ? 'TI' : 'Geral'}
+          </span>
+          <span className="flex items-center gap-1">
+            <MapPin className="w-3 h-3" />
+            {process.destination}
           </span>
           <span className="flex items-center gap-1">
             <Calendar className="w-3 h-3" />

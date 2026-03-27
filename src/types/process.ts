@@ -28,6 +28,7 @@ export interface Process {
   processNumber: string;
   itemName: string;
   quantity: number;
+  destination: string;
   currentStatus: ProcessStatus;
   isIT: boolean;
   createdBy: string;
