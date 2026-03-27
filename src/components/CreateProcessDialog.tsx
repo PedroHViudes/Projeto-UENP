@@ -13,23 +13,26 @@ export function CreateProcessDialog() {
   const [processNumber, setProcessNumber] = useState('');
   const [itemName, setItemName] = useState('');
   const [quantity, setQuantity] = useState('');
+  const [destination, setDestination] = useState('');
   const [isIT, setIsIT] = useState(false);
   const { addProcess } = useProcesses();
   const { toast } = useToast();
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!processNumber || !itemName || !quantity) return;
+    if (!processNumber || !itemName || !quantity || !destination) return;
     addProcess({
       processNumber,
       itemName,
       quantity: parseInt(quantity),
+      destination,
       isIT,
     });
     toast({ title: 'Processo criado', description: `${processNumber} registrado com sucesso.` });
     setProcessNumber('');
     setItemName('');
     setQuantity('');
+    setDestination('');
     setIsIT(false);
     setOpen(false);
   };
@@ -58,6 +61,10 @@ export function CreateProcessDialog() {
           <div className="space-y-2">
             <Label htmlFor="quantity">Quantidade</Label>
             <Input id="quantity" type="number" min="1" placeholder="10" value={quantity} onChange={e => setQuantity(e.target.value)} required />
+          </div>
+          <div className="space-y-2">
+            <Label htmlFor="destination">Destino</Label>
+            <Input id="destination" placeholder="Ex: Departamento de Engenharia" value={destination} onChange={e => setDestination(e.target.value)} required />
           </div>
           <div className="flex items-center justify-between">
             <Label htmlFor="isIT">Item de TI?</Label>

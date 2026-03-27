@@ -6,7 +6,7 @@ import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
 import { useToast } from '@/hooks/use-toast';
-import { PackageCheck, Send, CheckCircle2, XCircle, Stamp, Truck } from 'lucide-react';
+import { PackageCheck, Send, CheckCircle2, XCircle, Stamp, Truck, RotateCcw } from 'lucide-react';
 
 interface ProcessActionsProps {
   process: Process;
@@ -83,6 +83,19 @@ export function ProcessActions({ process }: ProcessActionsProps) {
         {canAct(['almoxarifado'], ['em_desacordo']) && (
           <Button onClick={() => doAction('pendencia_fornecedor')} variant="outline" className="gap-2">
             <Send className="w-4 h-4" /> Registrar Pendência Fornecedor
+          </Button>
+        )}
+
+        {/* After supplier resolves: almoxarifado can re-send to NTI (if IT) or self-check (if not IT) */}
+        {canAct(['almoxarifado'], ['pendencia_fornecedor']) && process.isIT && (
+          <Button onClick={() => doAction('reenviar_nti')} className="gap-2">
+            <RotateCcw className="w-4 h-4" /> Reenviar ao NTI para Nova Conferência
+          </Button>
+        )}
+
+        {canAct(['almoxarifado'], ['pendencia_fornecedor']) && !process.isIT && (
+          <Button onClick={() => doAction('reconferencia_almox')} className="gap-2">
+            <RotateCcw className="w-4 h-4" /> Iniciar Nova Conferência
           </Button>
         )}
 
