@@ -43,11 +43,23 @@ export const STATUS_LABELS: Record<ProcessStatus, string> = {
   recebido_almoxarifado: 'Recebido no Almoxarifado',
   conferencia_nti: 'Conferência NTI',
   conferencia_almoxarifado: 'Conferência Almoxarifado',
-  de_acordo: 'De Acordo',
+  de_acordo: 'De Acordo - Aguardando Almoxarifado',
   em_desacordo: 'Em Desacordo',
   pendencia_fornecedor: 'Pendência com Fornecedor',
   patrimonio: 'Patrimônio',
   entregue: 'Entregue ao Destino Final',
+};
+
+export const STATUS_SECTOR_MAP: Record<ProcessStatus, string> = {
+  aguardando_recebimento: 'Planejamento',
+  recebido_almoxarifado: 'Almoxarifado',
+  conferencia_nti: 'NTI',
+  conferencia_almoxarifado: 'Almoxarifado',
+  de_acordo: 'Almoxarifado',
+  em_desacordo: 'Almoxarifado',
+  pendencia_fornecedor: 'Almoxarifado',
+  patrimonio: 'Patrimônio',
+  entregue: 'Concluído',
 };
 
 export const STATUS_COLORS: Record<ProcessStatus, 'success' | 'danger' | 'warning' | 'info'> = {
