@@ -9,6 +9,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Package, LogIn, UserPlus, Loader2 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { UserRole, ROLE_LABELS } from '@/types/process';
+import imguenp from '../assets/logo-uenp.png';
 
 export default function LoginPage() {
   const [loginEmail, setLoginEmail] = useState('');
@@ -59,11 +60,11 @@ export default function LoginPage() {
     <div className="min-h-screen flex items-center justify-center bg-background p-4">
       <div className="w-full max-w-md">
         <div className="flex items-center justify-center gap-3 mb-8">
-          <div className="flex items-center justify-center w-12 h-12 rounded-xl bg-primary">
-            <Package className="w-7 h-7 text-primary-foreground" />
+          <div className="flex items-center justify-center w-12 h-12 rounded-xl ">
+            <img src={imguenp} alt="logo" />
           </div>
           <div>
-            <h1 className="text-2xl font-bold text-foreground">TrackFlow</h1>
+            <h1 className="text-2xl font-bold text-foreground">UENP - CJ</h1>
             <p className="text-sm text-muted-foreground">Gestão de Processos</p>
           </div>
         </div>
@@ -81,7 +82,7 @@ export default function LoginPage() {
                 <form onSubmit={handleLogin} className="space-y-4">
                   <div className="space-y-2">
                     <Label htmlFor="login-email">E-mail</Label>
-                    <Input id="login-email" type="email" placeholder="usuario@gov.br" value={loginEmail} onChange={e => setLoginEmail(e.target.value)} required />
+                    <Input id="login-email" type="email" placeholder="usuario@uenp.edu.br" value={loginEmail} onChange={e => setLoginEmail(e.target.value)} required />
                   </div>
                   <div className="space-y-2">
                     <Label htmlFor="login-password">Senha</Label>

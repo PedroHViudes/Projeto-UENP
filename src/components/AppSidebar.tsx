@@ -2,6 +2,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { ROLE_LABELS } from '@/types/process';
 import { LayoutDashboard, LogOut, Package, User } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import imguenp from '../assets/logo-uenp.png';
 
 export function AppSidebar() {
   const { user, logout } = useAuth();
@@ -11,12 +12,12 @@ export function AppSidebar() {
   return (
     <aside className="fixed inset-y-0 left-0 z-30 flex flex-col w-64 bg-sidebar text-sidebar-foreground">
       {/* Logo */}
-      <div className="flex items-center gap-3 px-6 py-5 border-b border-sidebar-border">
-        <div className="flex items-center justify-center w-9 h-9 rounded-lg bg-sidebar-primary">
-          <Package className="w-5 h-5 text-sidebar-primary-foreground" />
+      <div className="flex  items-center gap-3 px-6 py-5 border-b border-sidebar-border" >
+        <div className="flex items-center justify-center w-9 h-9 rounded-lg ">
+          <img src={imguenp} alt="" />
         </div>
         <div>
-          <h1 className="font-bold text-sm text-sidebar-foreground">TrackFlow</h1>
+          <h1 className="font-bold text-sm text-sidebar-foreground">UENP - CJ</h1>
           <p className="text-xs text-sidebar-muted">Gestão de Processos</p>
         </div>
       </div>

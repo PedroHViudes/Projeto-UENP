@@ -84,9 +84,9 @@ CREATE TABLE public.process_attachments (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   process_id UUID REFERENCES public.processes(id) ON DELETE CASCADE NOT NULL,
   type attachment_type NOT NULL,
-  file_name TEXT drop NOT NULL,
-  file_url TEXT drop NOT NULL,
-  storage_path TEXT drop NOT NULL,
+  file_name TEXT NOT NULL,
+  file_url TEXT NOT NULL,
+  storage_path TEXT NOT NULL,
   uploaded_by UUID REFERENCES auth.users(id) NOT NULL,
   uploaded_by_name TEXT NOT NULL,
   uploaded_at TIMESTAMPTZ DEFAULT NOW()
@@ -119,3 +119,6 @@ CREATE POLICY "attachments_select" ON public.process_attachments FOR SELECT TO a
 CREATE POLICY "attachments_insert" ON public.process_attachments FOR INSERT TO authenticated WITH CHECK (true);
 CREATE POLICY "attachments_update" ON public.process_attachments FOR UPDATE TO authenticated USING (true);
 CREATE POLICY "attachments_delete" ON public.process_attachments FOR DELETE TO authenticated USING (uploaded_by = auth.uid() OR public.has_role(auth.uid(), 'admin'));
+
+
+

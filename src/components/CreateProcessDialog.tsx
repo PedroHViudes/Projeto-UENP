@@ -23,11 +23,8 @@ export function CreateProcessDialog() {
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (!processNumber || !itemName || !quantity || !destination) return;
-    if (!attachment) {
-      toast({ title: 'PDF obrigatório', description: 'Anexe o PDF do processo antes de registrar.', variant: 'destructive' });
-      return;
-    }
-    addProcess({ processNumber, itemName, quantity: parseInt(quantity), destination, isIT, attachment });
+   
+    addProcess({ processNumber, itemName, quantity: parseInt(quantity), destination, isIT, attachment: attachment || undefined });
     toast({ title: 'Processo criado', description: `${processNumber} registrado com sucesso.` });
     setProcessNumber(''); setItemName(''); setQuantity(''); setDestination(''); setIsIT(false); setAttachment(null);
     setOpen(false);
@@ -65,7 +62,6 @@ export function CreateProcessDialog() {
           </div>
           <FileUpload
             label="PDF do Processo"
-            required
             onFileUploaded={(fileName, fileUrl, storagePath) => setAttachment({ fileName, fileUrl, storagePath })}
             currentFile={attachment}
             onFileRemoved={() => setAttachment(null)}
