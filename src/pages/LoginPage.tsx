@@ -4,22 +4,56 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
-import { Package, LogIn } from 'lucide-react';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Package, LogIn, UserPlus, Loader2 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
+import { UserRole, ROLE_LABELS } from '@/types/process';
 
 export default function LoginPage() {
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
-  const { login } = useAuth();
+  const [loginEmail, setLoginEmail] = useState('');
+  const [loginPassword, setLoginPassword] = useState('');
+  const [regName, setRegName] = useState('');
+  const [regEmail, setRegEmail] = useState('');
+  const [regPassword, setRegPassword] = useState('');
+  const [regRole, setRegRole] = useState<UserRole>('planejamento');
+  const [submitting, setSubmitting] = useState(false);
+  const { login, register } = useAuth();
   const { toast } = useToast();
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
-    const success = login(email, password);
-    if (!success) {
-      toast({ title: 'Erro', description: 'Credenciais inválidas.', variant: 'destructive' });
+    setSubmitting(true);
+    const error = await login(loginEmail, loginPassword);
+    if (error) {
+      toast({ title: 'Erro', description: error, variant: 'destructive' });
     }
+    setSubmitting(false);
   };
+
+  const handleRegister = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (regPassword.length < 6) {
+      toast({ title: 'Erro', description: 'A senha deve ter pelo menos 6 caracteres.', variant: 'destructive' });
+      return;
+    }
+    setSubmitting(true);
+    const error = await register(regEmail, regPassword, regName, regRole);
+    if (error) {
+      toast({ title: 'Erro', description: error, variant: 'destructive' });
+    } else {
+      toast({ title: 'Conta criada!', description: 'Você já está logado no sistema.' });
+    }
+    setSubmitting(false);
+  };
+
+  const roles: { value: UserRole; label: string }[] = [
+    { value: 'planejamento', label: ROLE_LABELS.planejamento },
+    { value: 'almoxarifado', label: ROLE_LABELS.almoxarifado },
+    { value: 'nti', label: ROLE_LABELS.nti },
+    { value: 'patrimonio', label: ROLE_LABELS.patrimonio },
+    { value: 'admin', label: ROLE_LABELS.admin },
+  ];
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-background p-4">
@@ -35,33 +69,66 @@ export default function LoginPage() {
         </div>
 
         <Card>
-          <CardHeader className="text-center">
-            <CardTitle className="text-lg">Acessar Sistema</CardTitle>
-            <CardDescription>Entre com suas credenciais</CardDescription>
-          </CardHeader>
-          <CardContent>
-            <form onSubmit={handleSubmit} className="space-y-4">
-              <div className="space-y-2">
-                <Label htmlFor="email">E-mail</Label>
-                <Input id="email" type="email" placeholder="usuario@gov.br" value={email} onChange={e => setEmail(e.target.value)} required />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="password">Senha</Label>
-                <Input id="password" type="password" placeholder="••••••" value={password} onChange={e => setPassword(e.target.value)} required />
-              </div>
-              <Button type="submit" className="w-full gap-2">
-                <LogIn className="w-4 h-4" /> Entrar
-              </Button>
-            </form>
+          <Tabs defaultValue="login">
+            <CardHeader className="pb-2">
+              <TabsList className="w-full">
+                <TabsTrigger value="login" className="flex-1">Entrar</TabsTrigger>
+                <TabsTrigger value="register" className="flex-1">Cadastrar</TabsTrigger>
+              </TabsList>
+            </CardHeader>
+            <CardContent>
+              <TabsContent value="login" className="mt-0">
+                <form onSubmit={handleLogin} className="space-y-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="login-email">E-mail</Label>
+                    <Input id="login-email" type="email" placeholder="usuario@gov.br" value={loginEmail} onChange={e => setLoginEmail(e.target.value)} required />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="login-password">Senha</Label>
+                    <Input id="login-password" type="password" placeholder="••••••" value={loginPassword} onChange={e => setLoginPassword(e.target.value)} required />
+                  </div>
+                  <Button type="submit" className="w-full gap-2" disabled={submitting}>
+                    {submitting ? <Loader2 className="w-4 h-4 animate-spin" /> : <LogIn className="w-4 h-4" />}
+                    Entrar
+                  </Button>
+                </form>
+              </TabsContent>
 
-            <div className="mt-6 p-3 rounded-lg bg-muted">
-              <p className="text-xs font-semibold text-muted-foreground mb-2">Usuários de demonstração (senha: 123456)</p>
-              <div className="space-y-1 text-xs text-muted-foreground">
-                <p>planejamento@gov.br • almoxarifado@gov.br</p>
-                <p>nti@gov.br • patrimonio@gov.br • admin@gov.br</p>
-              </div>
-            </div>
-          </CardContent>
+              <TabsContent value="register" className="mt-0">
+                <form onSubmit={handleRegister} className="space-y-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="reg-name">Nome Completo</Label>
+                    <Input id="reg-name" placeholder="Seu nome" value={regName} onChange={e => setRegName(e.target.value)} required />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="reg-email">E-mail</Label>
+                    <Input id="reg-email" type="email" placeholder="usuario@gov.br" value={regEmail} onChange={e => setRegEmail(e.target.value)} required />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="reg-password">Senha</Label>
+                    <Input id="reg-password" type="password" placeholder="Mínimo 6 caracteres" value={regPassword} onChange={e => setRegPassword(e.target.value)} required />
+                  </div>
+                  <div className="space-y-2">
+                    <Label>Setor</Label>
+                    <Select value={regRole} onValueChange={(v) => setRegRole(v as UserRole)}>
+                      <SelectTrigger>
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {roles.map(r => (
+                          <SelectItem key={r.value} value={r.value}>{r.label}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <Button type="submit" className="w-full gap-2" disabled={submitting}>
+                    {submitting ? <Loader2 className="w-4 h-4 animate-spin" /> : <UserPlus className="w-4 h-4" />}
+                    Criar Conta
+                  </Button>
+                </form>
+              </TabsContent>
+            </CardContent>
+          </Tabs>
         </Card>
       </div>
     </div>
