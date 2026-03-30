@@ -1,5 +1,5 @@
 import { TimelineEntry, STATUS_LABELS, STATUS_COLORS } from '@/types/process';
-import { CheckCircle2, XCircle, Clock, ArrowRight, User } from 'lucide-react';
+import { CheckCircle2, XCircle, Clock, ArrowRight, User, FileText } from 'lucide-react';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { cn } from '@/lib/utils';
@@ -31,7 +31,6 @@ export function ProcessTimeline({ entries }: ProcessTimelineProps) {
 
         return (
           <div key={entry.id} className="relative flex gap-4 pb-8 last:pb-0">
-            {/* Vertical line */}
             {!isLast && (
               <div className={cn(
                 'absolute left-5 top-10 w-0.5 h-[calc(100%-2rem)]',
@@ -39,7 +38,6 @@ export function ProcessTimeline({ entries }: ProcessTimelineProps) {
               )} style={{ opacity: 0.3 }} />
             )}
 
-            {/* Icon */}
             <div className={cn(
               'relative z-10 flex items-center justify-center w-10 h-10 rounded-full shrink-0',
               iconColorMap[color]
@@ -55,7 +53,6 @@ export function ProcessTimeline({ entries }: ProcessTimelineProps) {
               )}
             </div>
 
-            {/* Content */}
             <div className="flex-1 min-w-0">
               <div className="flex items-center gap-2 flex-wrap">
                 <span className="font-semibold text-sm text-foreground">
@@ -77,6 +74,18 @@ export function ProcessTimeline({ entries }: ProcessTimelineProps) {
                 <p className="mt-2 text-sm text-muted-foreground bg-muted rounded-lg px-3 py-2">
                   {entry.notes}
                 </p>
+              )}
+
+              {entry.attachmentFileName && entry.attachmentUrl && (
+                <a
+                  href={entry.attachmentUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="mt-2 inline-flex items-center gap-1.5 text-xs text-primary underline hover:text-primary/80"
+                >
+                  <FileText className="w-3.5 h-3.5" />
+                  {entry.attachmentFileName}
+                </a>
               )}
             </div>
           </div>

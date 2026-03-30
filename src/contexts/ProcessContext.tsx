@@ -1,15 +1,22 @@
 import React, { createContext, useContext, useState, ReactNode } from 'react';
-import { Process, ProcessStatus, TimelineEntry } from '@/types/process';
+import { Process, ProcessStatus, TimelineEntry, ProcessAttachment, AttachmentType } from '@/types/process';
 import { useAuth } from './AuthContext';
+import { supabase } from '@/integrations/supabase/client';
 
 interface ProcessContextType {
   processes: Process[];
-  addProcess: (data: { processNumber: string; itemName: string; quantity: number; destination: string; isIT: boolean }) => void;
+  addProcess: (data: {
+    processNumber: string; itemName: string; quantity: number;
+    destination: string; isIT: boolean;
+    attachment: { fileName: string; fileUrl: string; storagePath: string };
+  }) => void;
   advanceProcess: (processId: string, action: string, notes?: string, agreement?: 'de_acordo' | 'em_desacordo') => void;
   addObservation: (processId: string, notes: string) => void;
   updateProcess: (processId: string, data: { processNumber: string; itemName: string; quantity: number; destination: string; isIT: boolean }) => void;
   deleteProcess: (processId: string) => void;
   getProcess: (id: string) => Process | undefined;
+  addAttachment: (processId: string, type: AttachmentType, fileName: string, fileUrl: string, storagePath: string) => void;
+  removeAttachment: (processId: string, attachmentId: string) => void;
 }
 
 const ProcessContext = createContext<ProcessContextType | undefined>(undefined);
@@ -27,6 +34,8 @@ const MOCK_PROCESSES: Process[] = [
     createdByName: 'Ana Silva',
     createdAt: '2024-03-01T10:00:00Z',
     updatedAt: '2024-03-05T14:30:00Z',
+    attachments: [],
+    patrimonioConfirmed: false,
     timeline: [
       { id: 't1', processId: '1', status: 'aguardando_recebimento', sector: 'Planejamento', userId: '1', userName: 'Ana Silva', timestamp: '2024-03-01T10:00:00Z', notes: 'Compra realizada via pregão eletrônico' },
       { id: 't2', processId: '1', status: 'recebido_almoxarifado', sector: 'Almoxarifado', userId: '2', userName: 'Carlos Souza', timestamp: '2024-03-04T09:15:00Z', notes: 'Recebido 10 unidades. NF 45231' },
@@ -45,6 +54,8 @@ const MOCK_PROCESSES: Process[] = [
     createdByName: 'Ana Silva',
     createdAt: '2024-03-10T11:00:00Z',
     updatedAt: '2024-03-10T11:00:00Z',
+    attachments: [],
+    patrimonioConfirmed: false,
     timeline: [
       { id: 't4', processId: '2', status: 'aguardando_recebimento', sector: 'Planejamento', userId: '1', userName: 'Ana Silva', timestamp: '2024-03-10T11:00:00Z', notes: 'Compra de mobiliário' },
     ],
@@ -61,6 +72,8 @@ const MOCK_PROCESSES: Process[] = [
     createdByName: 'Ana Silva',
     createdAt: '2024-02-20T08:00:00Z',
     updatedAt: '2024-03-08T16:00:00Z',
+    attachments: [],
+    patrimonioConfirmed: false,
     timeline: [
       { id: 't5', processId: '3', status: 'aguardando_recebimento', sector: 'Planejamento', userId: '1', userName: 'Ana Silva', timestamp: '2024-02-20T08:00:00Z' },
       { id: 't6', processId: '3', status: 'recebido_almoxarifado', sector: 'Almoxarifado', userId: '2', userName: 'Carlos Souza', timestamp: '2024-02-25T10:00:00Z' },
@@ -81,6 +94,8 @@ const MOCK_PROCESSES: Process[] = [
     createdByName: 'Ana Silva',
     createdAt: '2024-01-15T09:00:00Z',
     updatedAt: '2024-02-28T10:00:00Z',
+    attachments: [],
+    patrimonioConfirmed: true,
     timeline: [
       { id: 't10', processId: '4', status: 'aguardando_recebimento', sector: 'Planejamento', userId: '1', userName: 'Ana Silva', timestamp: '2024-01-15T09:00:00Z' },
       { id: 't11', processId: '4', status: 'recebido_almoxarifado', sector: 'Almoxarifado', userId: '2', userName: 'Carlos Souza', timestamp: '2024-01-25T10:00:00Z' },
@@ -96,18 +111,39 @@ export function ProcessProvider({ children }: { children: ReactNode }) {
   const [processes, setProcesses] = useState<Process[]>(MOCK_PROCESSES);
   const { user } = useAuth();
 
-  const addProcess = (data: { processNumber: string; itemName: string; quantity: number; destination: string; isIT: boolean }) => {
+  const addProcess = (data: {
+    processNumber: string; itemName: string; quantity: number;
+    destination: string; isIT: boolean;
+    attachment: { fileName: string; fileUrl: string; storagePath: string };
+  }) => {
     if (!user) return;
     const now = new Date().toISOString();
     const id = String(Date.now());
+    const attachmentId = `att-${id}`;
+
     const newProcess: Process = {
       id,
-      ...data,
+      processNumber: data.processNumber,
+      itemName: data.itemName,
+      quantity: data.quantity,
+      destination: data.destination,
+      isIT: data.isIT,
       currentStatus: 'aguardando_recebimento',
       createdBy: user.id,
       createdByName: user.name,
       createdAt: now,
       updatedAt: now,
+      patrimonioConfirmed: false,
+      attachments: [{
+        id: attachmentId,
+        type: 'processo',
+        fileName: data.attachment.fileName,
+        fileUrl: data.attachment.fileUrl,
+        storagePath: data.attachment.storagePath,
+        uploadedBy: user.id,
+        uploadedByName: user.name,
+        uploadedAt: now,
+      }],
       timeline: [{
         id: `t-${id}`,
         processId: id,
@@ -117,6 +153,8 @@ export function ProcessProvider({ children }: { children: ReactNode }) {
         userName: user.name,
         timestamp: now,
         notes: 'Registro de compra realizada',
+        attachmentFileName: data.attachment.fileName,
+        attachmentUrl: data.attachment.fileUrl,
       }],
     };
     setProcesses(prev => [newProcess, ...prev]);
@@ -127,22 +165,26 @@ export function ProcessProvider({ children }: { children: ReactNode }) {
     setProcesses(prev => prev.map(p => {
       if (p.id !== processId) return p;
       const now = new Date().toISOString();
+      const changes: string[] = [];
+      if (p.processNumber !== data.processNumber) changes.push(`Número: ${p.processNumber} → ${data.processNumber}`);
+      if (p.itemName !== data.itemName) changes.push(`Item: ${p.itemName} → ${data.itemName}`);
+      if (p.quantity !== data.quantity) changes.push(`Quantidade: ${p.quantity} → ${data.quantity}`);
+      if (p.destination !== data.destination) changes.push(`Destino: ${p.destination} → ${data.destination}`);
+      if (p.isIT !== data.isIT) changes.push(`Tipo: ${p.isIT ? 'TI' : 'Geral'} → ${data.isIT ? 'TI' : 'Geral'}`);
+
       const entry: TimelineEntry = {
         id: `t-${Date.now()}`,
         processId,
         status: p.currentStatus,
-        sector: 'Administração',
+        sector: user.role === 'admin' ? 'Administração' : 'Planejamento',
         userId: user.id,
         userName: user.name,
         timestamp: now,
-        notes: `Processo editado pelo administrador ${user.name}`,
+        notes: changes.length > 0
+          ? `Processo editado por ${user.name}. Alterações: ${changes.join('; ')}`
+          : `Processo editado por ${user.name} (sem alterações nos dados)`,
       };
-      return {
-        ...p,
-        ...data,
-        updatedAt: now,
-        timeline: [...p.timeline, entry],
-      };
+      return { ...p, ...data, updatedAt: now, timeline: [...p.timeline, entry] };
     }));
   };
 
@@ -157,69 +199,48 @@ export function ProcessProvider({ children }: { children: ReactNode }) {
       const now = new Date().toISOString();
       let newStatus: ProcessStatus = p.currentStatus;
       let sector = '';
+      let newPatrimonioConfirmed = p.patrimonioConfirmed;
 
       switch (action) {
         case 'receber':
-          newStatus = 'recebido_almoxarifado';
-          sector = 'Almoxarifado';
-          break;
+          newStatus = 'recebido_almoxarifado'; sector = 'Almoxarifado'; break;
         case 'enviar_nti':
-          newStatus = 'conferencia_nti';
-          sector = 'NTI';
-          break;
+          newStatus = 'conferencia_nti'; sector = 'NTI'; break;
         case 'conferencia_almox':
-          newStatus = 'conferencia_almoxarifado';
-          sector = 'Almoxarifado';
-          break;
+          newStatus = 'conferencia_almoxarifado'; sector = 'Almoxarifado'; break;
         case 'parecer':
-          if (agreement === 'de_acordo') {
-            newStatus = 'de_acordo';
-          } else {
-            newStatus = 'em_desacordo';
-          }
-          sector = p.isIT ? 'NTI' : 'Almoxarifado';
-          break;
+          newStatus = agreement === 'de_acordo' ? 'de_acordo' : 'em_desacordo';
+          sector = p.isIT ? 'NTI' : 'Almoxarifado'; break;
         case 'pendencia_fornecedor':
-          newStatus = 'pendencia_fornecedor';
-          sector = 'Almoxarifado';
-          break;
+          newStatus = 'pendencia_fornecedor'; sector = 'Almoxarifado'; break;
         case 'reenviar_nti':
-          newStatus = 'conferencia_nti';
-          sector = 'Almoxarifado';
-          break;
+          newStatus = 'conferencia_nti'; sector = 'Almoxarifado'; break;
         case 'reconferencia_almox':
-          newStatus = 'conferencia_almoxarifado';
-          sector = 'Almoxarifado';
-          break;
-        case 'patrimonio':
-          newStatus = 'patrimonio';
-          sector = 'Patrimônio';
-          break;
+          newStatus = 'conferencia_almoxarifado'; sector = 'Almoxarifado'; break;
         case 'encaminhar_patrimonio':
-          newStatus = 'patrimonio';
-          sector = 'Almoxarifado';
-          break;
+          newStatus = 'patrimonio'; sector = 'Almoxarifado'; break;
+        case 'confirmar_patrimonio':
+          newPatrimonioConfirmed = true; sector = 'Patrimônio'; break;
         case 'entregar':
-          newStatus = 'entregue';
-          sector = 'Patrimônio';
-          break;
+          newStatus = 'entregue'; sector = 'Patrimônio'; break;
       }
 
       const entry: TimelineEntry = {
         id: `t-${Date.now()}`,
         processId,
-        status: newStatus,
+        status: action === 'confirmar_patrimonio' ? p.currentStatus : newStatus,
         sector,
         userId: user.id,
         userName: user.name,
         timestamp: now,
-        notes,
+        notes: action === 'confirmar_patrimonio' ? (notes || 'Colagem de patrimônio confirmada') : notes,
         agreement,
       };
 
       return {
         ...p,
-        currentStatus: newStatus,
+        currentStatus: action === 'confirmar_patrimonio' ? p.currentStatus : newStatus,
+        patrimonioConfirmed: newPatrimonioConfirmed,
         updatedAt: now,
         timeline: [...p.timeline, entry],
       };
@@ -241,8 +262,77 @@ export function ProcessProvider({ children }: { children: ReactNode }) {
         timestamp: now,
         notes,
       };
+      return { ...p, updatedAt: now, timeline: [...p.timeline, entry] };
+    }));
+  };
+
+  const addAttachment = (processId: string, type: AttachmentType, fileName: string, fileUrl: string, storagePath: string) => {
+    if (!user) return;
+    setProcesses(prev => prev.map(p => {
+      if (p.id !== processId) return p;
+      const now = new Date().toISOString();
+      const existing = p.attachments.find(a => a.type === type);
+      const noteText = existing
+        ? `Arquivo substituído (${type}): ${existing.fileName} → ${fileName}`
+        : `Arquivo anexado (${type}): ${fileName}`;
+
+      const newAttachments = existing
+        ? p.attachments.map(a => a.type === type ? {
+            ...a, id: `att-${Date.now()}`, fileName, fileUrl, storagePath,
+            uploadedBy: user.id, uploadedByName: user.name, uploadedAt: now,
+          } : a)
+        : [...p.attachments, {
+            id: `att-${Date.now()}`, type, fileName, fileUrl, storagePath,
+            uploadedBy: user.id, uploadedByName: user.name, uploadedAt: now,
+          }];
+
+      // Delete old file from storage
+      if (existing) {
+        supabase.storage.from('process-documents').remove([existing.storagePath]);
+      }
+
+      const entry: TimelineEntry = {
+        id: `t-${Date.now()}`,
+        processId,
+        status: p.currentStatus,
+        sector: user.role === 'nti' ? 'NTI' : user.role === 'patrimonio' ? 'Patrimônio' : user.role === 'planejamento' ? 'Planejamento' : 'Almoxarifado',
+        userId: user.id,
+        userName: user.name,
+        timestamp: now,
+        notes: noteText,
+        attachmentFileName: fileName,
+        attachmentUrl: fileUrl,
+      };
+
+      return { ...p, attachments: newAttachments, updatedAt: now, timeline: [...p.timeline, entry] };
+    }));
+  };
+
+  const removeAttachment = (processId: string, attachmentId: string) => {
+    if (!user) return;
+    setProcesses(prev => prev.map(p => {
+      if (p.id !== processId) return p;
+      const attachment = p.attachments.find(a => a.id === attachmentId);
+      if (!attachment) return p;
+      if (attachment.uploadedBy !== user.id && user.role !== 'admin') return p;
+
+      const now = new Date().toISOString();
+      supabase.storage.from('process-documents').remove([attachment.storagePath]);
+
+      const entry: TimelineEntry = {
+        id: `t-${Date.now()}`,
+        processId,
+        status: p.currentStatus,
+        sector: user.role === 'nti' ? 'NTI' : user.role === 'patrimonio' ? 'Patrimônio' : user.role === 'planejamento' ? 'Planejamento' : 'Almoxarifado',
+        userId: user.id,
+        userName: user.name,
+        timestamp: now,
+        notes: `Arquivo removido (${attachment.type}): ${attachment.fileName}`,
+      };
+
       return {
         ...p,
+        attachments: p.attachments.filter(a => a.id !== attachmentId),
         updatedAt: now,
         timeline: [...p.timeline, entry],
       };
@@ -252,7 +342,10 @@ export function ProcessProvider({ children }: { children: ReactNode }) {
   const getProcess = (id: string) => processes.find(p => p.id === id);
 
   return (
-    <ProcessContext.Provider value={{ processes, addProcess, advanceProcess, addObservation, updateProcess, deleteProcess, getProcess }}>
+    <ProcessContext.Provider value={{
+      processes, addProcess, advanceProcess, addObservation,
+      updateProcess, deleteProcess, getProcess, addAttachment, removeAttachment,
+    }}>
       {children}
     </ProcessContext.Provider>
   );

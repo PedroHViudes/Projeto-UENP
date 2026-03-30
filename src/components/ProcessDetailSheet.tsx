@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Process } from '@/types/process';
+import { Process, ATTACHMENT_LABELS } from '@/types/process';
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from '@/components/ui/sheet';
 import { StatusBadge } from './StatusBadge';
 import { ProcessTimeline } from './ProcessTimeline';
@@ -7,21 +7,15 @@ import { ProcessActions } from './ProcessActions';
 import { EditProcessDialog } from './EditProcessDialog';
 import { Separator } from '@/components/ui/separator';
 import { Button } from '@/components/ui/button';
-import { Hash, Package, Layers, Calendar, User, MapPin, Pencil, Trash2 } from 'lucide-react';
+import { Hash, Package, Layers, Calendar, User, MapPin, Pencil, Trash2, FileText, X } from 'lucide-react';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { useProcesses } from '@/contexts/ProcessContext';
 import { useAuth } from '@/contexts/AuthContext';
 import { useToast } from '@/hooks/use-toast';
 import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
+  AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
+  AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
 
 interface ProcessDetailSheetProps {
@@ -30,7 +24,7 @@ interface ProcessDetailSheetProps {
 }
 
 export function ProcessDetailSheet({ process: initialProcess, onClose }: ProcessDetailSheetProps) {
-  const { getProcess, deleteProcess } = useProcesses();
+  const { getProcess, deleteProcess, removeAttachment } = useProcesses();
   const { user } = useAuth();
   const { toast } = useToast();
   const [editOpen, setEditOpen] = useState(false);
@@ -38,6 +32,8 @@ export function ProcessDetailSheet({ process: initialProcess, onClose }: Process
 
   const process = initialProcess ? getProcess(initialProcess.id) ?? initialProcess : null;
   const isAdmin = user?.role === 'admin';
+  const isPlanejamento = user?.role === 'planejamento';
+  const canEdit = isAdmin || isPlanejamento;
 
   const handleDelete = () => {
     if (!process) return;
@@ -45,6 +41,12 @@ export function ProcessDetailSheet({ process: initialProcess, onClose }: Process
     toast({ title: 'Processo excluído', description: `${process.processNumber} foi removido.` });
     setDeleteOpen(false);
     onClose();
+  };
+
+  const handleRemoveAttachment = (attachmentId: string) => {
+    if (!process) return;
+    removeAttachment(process.id, attachmentId);
+    toast({ title: 'Arquivo removido', description: 'Arquivo removido com sucesso.' });
   };
 
   return (
@@ -59,16 +61,18 @@ export function ProcessDetailSheet({ process: initialProcess, onClose }: Process
                     <Hash className="w-4 h-4 text-primary" />
                     <span className="text-sm font-mono font-semibold text-primary">{process.processNumber}</span>
                   </div>
-                  {isAdmin && (
-                    <div className="flex gap-1">
+                  <div className="flex gap-1">
+                    {canEdit && (
                       <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => setEditOpen(true)}>
                         <Pencil className="w-4 h-4" />
                       </Button>
+                    )}
+                    {isAdmin && (
                       <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive hover:text-destructive" onClick={() => setDeleteOpen(true)}>
                         <Trash2 className="w-4 h-4" />
                       </Button>
-                    </div>
-                  )}
+                    )}
+                  </div>
                 </div>
                 <SheetTitle className="text-left">{process.itemName}</SheetTitle>
                 <div className="mt-2">
@@ -84,6 +88,37 @@ export function ProcessDetailSheet({ process: initialProcess, onClose }: Process
                   <InfoItem icon={<Calendar className="w-4 h-4" />} label="Data" value={format(new Date(process.createdAt), "dd/MM/yyyy", { locale: ptBR })} />
                   <InfoItem icon={<MapPin className="w-4 h-4" />} label="Destino" value={process.destination} />
                 </div>
+
+                {/* Attachments section */}
+                {process.attachments.length > 0 && (
+                  <>
+                    <Separator />
+                    <div>
+                      <h3 className="font-semibold text-sm mb-3">Documentos Anexados</h3>
+                      <div className="space-y-2">
+                        {process.attachments.map(att => {
+                          const canRemove = user?.id === att.uploadedBy || isAdmin;
+                          return (
+                            <div key={att.id} className="flex items-center gap-2 p-2 rounded-lg border border-border bg-muted/30">
+                              <FileText className="w-4 h-4 text-primary shrink-0" />
+                              <div className="flex-1 min-w-0">
+                                <a href={att.fileUrl} target="_blank" rel="noopener noreferrer" className="text-sm text-primary underline truncate block">
+                                  {att.fileName}
+                                </a>
+                                <span className="text-xs text-muted-foreground">{ATTACHMENT_LABELS[att.type]} • {att.uploadedByName}</span>
+                              </div>
+                              {canRemove && (
+                                <Button variant="ghost" size="icon" className="h-6 w-6 shrink-0" onClick={() => handleRemoveAttachment(att.id)}>
+                                  <X className="w-3 h-3" />
+                                </Button>
+                              )}
+                            </div>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  </>
+                )}
 
                 <Separator />
 
@@ -107,26 +142,26 @@ export function ProcessDetailSheet({ process: initialProcess, onClose }: Process
         </SheetContent>
       </Sheet>
 
+      {process && canEdit && (
+        <EditProcessDialog process={process} open={editOpen} onOpenChange={setEditOpen} />
+      )}
       {process && isAdmin && (
-        <>
-          <EditProcessDialog process={process} open={editOpen} onOpenChange={setEditOpen} />
-          <AlertDialog open={deleteOpen} onOpenChange={setDeleteOpen}>
-            <AlertDialogContent>
-              <AlertDialogHeader>
-                <AlertDialogTitle>Excluir processo?</AlertDialogTitle>
-                <AlertDialogDescription>
-                  Esta ação não pode ser desfeita. O processo {process.processNumber} será permanentemente removido.
-                </AlertDialogDescription>
-              </AlertDialogHeader>
-              <AlertDialogFooter>
-                <AlertDialogCancel>Cancelar</AlertDialogCancel>
-                <AlertDialogAction onClick={handleDelete} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
-                  Excluir
-                </AlertDialogAction>
-              </AlertDialogFooter>
-            </AlertDialogContent>
-          </AlertDialog>
-        </>
+        <AlertDialog open={deleteOpen} onOpenChange={setDeleteOpen}>
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle>Excluir processo?</AlertDialogTitle>
+              <AlertDialogDescription>
+                Esta ação não pode ser desfeita. O processo {process.processNumber} será permanentemente removido.
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel>Cancelar</AlertDialogCancel>
+              <AlertDialogAction onClick={handleDelete} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
+                Excluir
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
       )}
     </>
   );
