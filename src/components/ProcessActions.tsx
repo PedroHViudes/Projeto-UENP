@@ -92,10 +92,7 @@ export function ProcessActions({ process }: ProcessActionsProps) {
             currentFile={hasTermo ? { fileName: process.attachments.find(a => a.type === 'termo_incorporacao')!.fileName, fileUrl: process.attachments.find(a => a.type === 'termo_incorporacao')!.fileUrl } : null}
             onFileRemoved={() => {
               const termo = process.attachments.find(a => a.type === 'termo_incorporacao');
-              if (termo) {
-                const { removeAttachment } = useProcesses();
-                removeAttachment(process.id, termo.id);
-              }
+              if (termo) removeAttachment(process.id, termo.id);
             }}
           />
         </div>
