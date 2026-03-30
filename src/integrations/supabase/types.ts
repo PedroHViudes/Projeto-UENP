@@ -14,16 +14,214 @@ export type Database = {
   }
   public: {
     Tables: {
-      [_ in never]: never
+      process_attachments: {
+        Row: {
+          file_name: string
+          file_url: string
+          id: string
+          process_id: string
+          storage_path: string
+          type: Database["public"]["Enums"]["attachment_type"]
+          uploaded_at: string | null
+          uploaded_by: string
+          uploaded_by_name: string
+        }
+        Insert: {
+          file_name: string
+          file_url: string
+          id?: string
+          process_id: string
+          storage_path: string
+          type: Database["public"]["Enums"]["attachment_type"]
+          uploaded_at?: string | null
+          uploaded_by: string
+          uploaded_by_name: string
+        }
+        Update: {
+          file_name?: string
+          file_url?: string
+          id?: string
+          process_id?: string
+          storage_path?: string
+          type?: Database["public"]["Enums"]["attachment_type"]
+          uploaded_at?: string | null
+          uploaded_by?: string
+          uploaded_by_name?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "process_attachments_process_id_fkey"
+            columns: ["process_id"]
+            isOneToOne: false
+            referencedRelation: "processes"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      processes: {
+        Row: {
+          created_at: string | null
+          created_by: string
+          created_by_name: string
+          current_status: Database["public"]["Enums"]["process_status"]
+          destination: string
+          id: string
+          is_it: boolean
+          item_name: string
+          patrimonio_confirmed: boolean
+          process_number: string
+          quantity: number
+          updated_at: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          created_by: string
+          created_by_name: string
+          current_status?: Database["public"]["Enums"]["process_status"]
+          destination?: string
+          id?: string
+          is_it?: boolean
+          item_name: string
+          patrimonio_confirmed?: boolean
+          process_number: string
+          quantity?: number
+          updated_at?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          created_by?: string
+          created_by_name?: string
+          current_status?: Database["public"]["Enums"]["process_status"]
+          destination?: string
+          id?: string
+          is_it?: boolean
+          item_name?: string
+          patrimonio_confirmed?: boolean
+          process_number?: string
+          quantity?: number
+          updated_at?: string | null
+        }
+        Relationships: []
+      }
+      profiles: {
+        Row: {
+          created_at: string | null
+          email: string
+          id: string
+          name: string
+        }
+        Insert: {
+          created_at?: string | null
+          email: string
+          id: string
+          name: string
+        }
+        Update: {
+          created_at?: string | null
+          email?: string
+          id?: string
+          name?: string
+        }
+        Relationships: []
+      }
+      timeline_entries: {
+        Row: {
+          agreement: string | null
+          attachment_file_name: string | null
+          attachment_url: string | null
+          created_at: string | null
+          id: string
+          notes: string | null
+          process_id: string
+          sector: string
+          status: Database["public"]["Enums"]["process_status"]
+          user_id: string
+          user_name: string
+        }
+        Insert: {
+          agreement?: string | null
+          attachment_file_name?: string | null
+          attachment_url?: string | null
+          created_at?: string | null
+          id?: string
+          notes?: string | null
+          process_id: string
+          sector: string
+          status: Database["public"]["Enums"]["process_status"]
+          user_id: string
+          user_name: string
+        }
+        Update: {
+          agreement?: string | null
+          attachment_file_name?: string | null
+          attachment_url?: string | null
+          created_at?: string | null
+          id?: string
+          notes?: string | null
+          process_id?: string
+          sector?: string
+          status?: Database["public"]["Enums"]["process_status"]
+          user_id?: string
+          user_name?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "timeline_entries_process_id_fkey"
+            columns: ["process_id"]
+            isOneToOne: false
+            referencedRelation: "processes"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      user_roles: {
+        Row: {
+          id: string
+          role: Database["public"]["Enums"]["app_role"]
+          user_id: string
+        }
+        Insert: {
+          id?: string
+          role: Database["public"]["Enums"]["app_role"]
+          user_id: string
+        }
+        Update: {
+          id?: string
+          role?: Database["public"]["Enums"]["app_role"]
+          user_id?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
     }
     Functions: {
-      [_ in never]: never
+      get_user_role: {
+        Args: { _user_id: string }
+        Returns: Database["public"]["Enums"]["app_role"]
+      }
+      has_role: {
+        Args: {
+          _role: Database["public"]["Enums"]["app_role"]
+          _user_id: string
+        }
+        Returns: boolean
+      }
     }
     Enums: {
-      [_ in never]: never
+      app_role: "planejamento" | "almoxarifado" | "nti" | "patrimonio" | "admin"
+      attachment_type: "processo" | "fct" | "termo_incorporacao"
+      process_status:
+        | "aguardando_recebimento"
+        | "recebido_almoxarifado"
+        | "conferencia_nti"
+        | "conferencia_almoxarifado"
+        | "de_acordo"
+        | "em_desacordo"
+        | "pendencia_fornecedor"
+        | "patrimonio"
+        | "entregue"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -150,6 +348,20 @@ export type CompositeTypes<
 
 export const Constants = {
   public: {
-    Enums: {},
+    Enums: {
+      app_role: ["planejamento", "almoxarifado", "nti", "patrimonio", "admin"],
+      attachment_type: ["processo", "fct", "termo_incorporacao"],
+      process_status: [
+        "aguardando_recebimento",
+        "recebido_almoxarifado",
+        "conferencia_nti",
+        "conferencia_almoxarifado",
+        "de_acordo",
+        "em_desacordo",
+        "pendencia_fornecedor",
+        "patrimonio",
+        "entregue",
+      ],
+    },
   },
 } as const
