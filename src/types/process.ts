@@ -11,6 +11,19 @@ export type ProcessStatus =
   | 'patrimonio'
   | 'entregue';
 
+export type AttachmentType = 'processo' | 'fct' | 'termo_incorporacao';
+
+export interface ProcessAttachment {
+  id: string;
+  type: AttachmentType;
+  fileName: string;
+  fileUrl: string;
+  storagePath: string;
+  uploadedBy: string;
+  uploadedByName: string;
+  uploadedAt: string;
+}
+
 export interface TimelineEntry {
   id: string;
   processId: string;
@@ -21,6 +34,8 @@ export interface TimelineEntry {
   timestamp: string;
   notes?: string;
   agreement?: 'de_acordo' | 'em_desacordo';
+  attachmentFileName?: string;
+  attachmentUrl?: string;
 }
 
 export interface Process {
@@ -36,6 +51,8 @@ export interface Process {
   createdAt: string;
   updatedAt: string;
   timeline: TimelineEntry[];
+  attachments: ProcessAttachment[];
+  patrimonioConfirmed: boolean;
 }
 
 export const STATUS_LABELS: Record<ProcessStatus, string> = {
@@ -51,7 +68,7 @@ export const STATUS_LABELS: Record<ProcessStatus, string> = {
 };
 
 export const STATUS_SECTOR_MAP: Record<ProcessStatus, string> = {
-  aguardando_recebimento: 'Planejamento',
+  aguardando_recebimento: 'Almoxarifado',
   recebido_almoxarifado: 'Almoxarifado',
   conferencia_nti: 'NTI',
   conferencia_almoxarifado: 'Almoxarifado',
@@ -80,4 +97,10 @@ export const ROLE_LABELS: Record<UserRole, string> = {
   nti: 'NTI',
   patrimonio: 'Patrimônio',
   admin: 'Administrador',
+};
+
+export const ATTACHMENT_LABELS: Record<AttachmentType, string> = {
+  processo: 'Processo (PDF)',
+  fct: 'FCT - Termo de Conferência Técnica',
+  termo_incorporacao: 'Termo de Incorporação',
 };

@@ -7,6 +7,7 @@ import { Switch } from '@/components/ui/switch';
 import { Plus } from 'lucide-react';
 import { useProcesses } from '@/contexts/ProcessContext';
 import { useToast } from '@/hooks/use-toast';
+import { FileUpload } from './FileUpload';
 
 export function CreateProcessDialog() {
   const [open, setOpen] = useState(false);
@@ -15,35 +16,27 @@ export function CreateProcessDialog() {
   const [quantity, setQuantity] = useState('');
   const [destination, setDestination] = useState('');
   const [isIT, setIsIT] = useState(false);
+  const [attachment, setAttachment] = useState<{ fileName: string; fileUrl: string; storagePath: string } | null>(null);
   const { addProcess } = useProcesses();
   const { toast } = useToast();
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (!processNumber || !itemName || !quantity || !destination) return;
-    addProcess({
-      processNumber,
-      itemName,
-      quantity: parseInt(quantity),
-      destination,
-      isIT,
-    });
+    if (!attachment) {
+      toast({ title: 'PDF obrigatório', description: 'Anexe o PDF do processo antes de registrar.', variant: 'destructive' });
+      return;
+    }
+    addProcess({ processNumber, itemName, quantity: parseInt(quantity), destination, isIT, attachment });
     toast({ title: 'Processo criado', description: `${processNumber} registrado com sucesso.` });
-    setProcessNumber('');
-    setItemName('');
-    setQuantity('');
-    setDestination('');
-    setIsIT(false);
+    setProcessNumber(''); setItemName(''); setQuantity(''); setDestination(''); setIsIT(false); setAttachment(null);
     setOpen(false);
   };
 
   return (
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
-        <Button className="gap-2">
-          <Plus className="w-4 h-4" />
-          Novo Processo
-        </Button>
+        <Button className="gap-2"><Plus className="w-4 h-4" /> Novo Processo</Button>
       </DialogTrigger>
       <DialogContent>
         <DialogHeader>
@@ -70,6 +63,13 @@ export function CreateProcessDialog() {
             <Label htmlFor="isIT">Item de TI?</Label>
             <Switch id="isIT" checked={isIT} onCheckedChange={setIsIT} />
           </div>
+          <FileUpload
+            label="PDF do Processo"
+            required
+            onFileUploaded={(fileName, fileUrl, storagePath) => setAttachment({ fileName, fileUrl, storagePath })}
+            currentFile={attachment}
+            onFileRemoved={() => setAttachment(null)}
+          />
           <Button type="submit" className="w-full">Registrar Processo</Button>
         </form>
       </DialogContent>

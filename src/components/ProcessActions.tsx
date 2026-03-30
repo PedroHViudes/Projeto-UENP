@@ -6,7 +6,8 @@ import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
 import { useToast } from '@/hooks/use-toast';
-import { PackageCheck, Send, CheckCircle2, XCircle, Stamp, Truck, RotateCcw, MessageSquarePlus } from 'lucide-react';
+import { FileUpload } from './FileUpload';
+import { PackageCheck, Send, CheckCircle2, XCircle, Stamp, Truck, RotateCcw, MessageSquarePlus, ShieldCheck } from 'lucide-react';
 
 interface ProcessActionsProps {
   process: Process;
@@ -14,7 +15,7 @@ interface ProcessActionsProps {
 
 export function ProcessActions({ process }: ProcessActionsProps) {
   const { user } = useAuth();
-  const { advanceProcess, addObservation } = useProcesses();
+  const { advanceProcess, addObservation, addAttachment } = useProcesses();
   const { toast } = useToast();
   const [notes, setNotes] = useState('');
   const [obsText, setObsText] = useState('');
@@ -40,11 +41,10 @@ export function ProcessActions({ process }: ProcessActionsProps) {
   const canAct = (allowedRoles: string[], allowedStatuses: string[]) =>
     (allowedRoles.includes(role) || role === 'admin') && allowedStatuses.includes(status);
 
-  // Check if user's sector currently "owns" the process for observations
   const sectorOwnsProcess = () => {
     if (role === 'admin') return true;
     const sectorMap: Record<string, string[]> = {
-      almoxarifado: ['recebido_almoxarifado', 'conferencia_almoxarifado', 'de_acordo', 'em_desacordo', 'pendencia_fornecedor'],
+      almoxarifado: ['recebido_almoxarifado', 'conferencia_almoxarifado', 'de_acordo', 'em_desacordo', 'pendencia_fornecedor', 'aguardando_recebimento'],
       nti: ['conferencia_nti'],
       patrimonio: ['patrimonio'],
       planejamento: ['aguardando_recebimento'],
@@ -52,21 +52,55 @@ export function ProcessActions({ process }: ProcessActionsProps) {
     return sectorMap[role]?.includes(status) ?? false;
   };
 
+  const hasFCT = process.attachments.some(a => a.type === 'fct');
+  const hasTermo = process.attachments.some(a => a.type === 'termo_incorporacao');
+
   return (
     <div className="space-y-4">
-      {/* Observation section - always available when sector owns the process */}
+      {/* Observation section */}
       {sectorOwnsProcess() && (
         <div className="space-y-2 p-3 rounded-lg border border-border bg-muted/30">
           <Label className="text-xs font-medium">Registrar Observação</Label>
-          <Textarea
-            placeholder="Digite uma observação sobre o andamento..."
-            value={obsText}
-            onChange={e => setObsText(e.target.value)}
-            className="min-h-[60px]"
-          />
+          <Textarea placeholder="Digite uma observação sobre o andamento..." value={obsText} onChange={e => setObsText(e.target.value)} className="min-h-[60px]" />
           <Button variant="outline" size="sm" onClick={handleAddObservation} disabled={!obsText.trim()} className="gap-2">
             <MessageSquarePlus className="w-4 h-4" /> Registrar Observação
           </Button>
+        </div>
+      )}
+
+      {/* FCT upload - before sending to patrimônio */}
+      {canAct(['almoxarifado'], ['de_acordo']) && (
+        <div className="p-3 rounded-lg border border-border bg-muted/30">
+          <FileUpload
+            label="FCT - Termo de Conferência Técnica (opcional)"
+            onFileUploaded={(fileName, fileUrl, storagePath) => addAttachment(process.id, 'fct', fileName, fileUrl, storagePath)}
+            currentFile={hasFCT ? { fileName: process.attachments.find(a => a.type === 'fct')!.fileName, fileUrl: process.attachments.find(a => a.type === 'fct')!.fileUrl } : null}
+            onFileRemoved={() => {
+              const fct = process.attachments.find(a => a.type === 'fct');
+              if (fct) {
+                const { removeAttachment } = useProcesses();
+                removeAttachment(process.id, fct.id);
+              }
+            }}
+          />
+        </div>
+      )}
+
+      {/* Termo de Incorporação - at patrimônio */}
+      {canAct(['patrimonio'], ['patrimonio']) && !process.patrimonioConfirmed && (
+        <div className="p-3 rounded-lg border border-border bg-muted/30">
+          <FileUpload
+            label="Termo de Incorporação (opcional)"
+            onFileUploaded={(fileName, fileUrl, storagePath) => addAttachment(process.id, 'termo_incorporacao', fileName, fileUrl, storagePath)}
+            currentFile={hasTermo ? { fileName: process.attachments.find(a => a.type === 'termo_incorporacao')!.fileName, fileUrl: process.attachments.find(a => a.type === 'termo_incorporacao')!.fileUrl } : null}
+            onFileRemoved={() => {
+              const termo = process.attachments.find(a => a.type === 'termo_incorporacao');
+              if (termo) {
+                const { removeAttachment } = useProcesses();
+                removeAttachment(process.id, termo.id);
+              }
+            }}
+          />
         </div>
       )}
 
@@ -135,14 +169,20 @@ export function ProcessActions({ process }: ProcessActionsProps) {
           </Button>
         )}
 
-        {/* After de_acordo: almoxarifado forwards to patrimônio */}
         {canAct(['almoxarifado'], ['de_acordo']) && (
           <Button onClick={() => doAction('encaminhar_patrimonio')} className="gap-2">
             <Stamp className="w-4 h-4" /> Encaminhar ao Patrimônio
           </Button>
         )}
 
-        {canAct(['patrimonio'], ['patrimonio']) && (
+        {/* Patrimônio: first confirm, then deliver */}
+        {canAct(['patrimonio'], ['patrimonio']) && !process.patrimonioConfirmed && (
+          <Button onClick={() => doAction('confirmar_patrimonio')} className="gap-2">
+            <ShieldCheck className="w-4 h-4" /> Confirmar Colagem do Patrimônio
+          </Button>
+        )}
+
+        {canAct(['patrimonio'], ['patrimonio']) && process.patrimonioConfirmed && (
           <Button onClick={() => doAction('entregar')} className="gap-2 bg-status-success hover:bg-status-success/90">
             <Truck className="w-4 h-4" /> Registrar Entrega Final
           </Button>
