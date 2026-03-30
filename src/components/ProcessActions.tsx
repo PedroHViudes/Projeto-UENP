@@ -77,10 +77,7 @@ export function ProcessActions({ process }: ProcessActionsProps) {
             currentFile={hasFCT ? { fileName: process.attachments.find(a => a.type === 'fct')!.fileName, fileUrl: process.attachments.find(a => a.type === 'fct')!.fileUrl } : null}
             onFileRemoved={() => {
               const fct = process.attachments.find(a => a.type === 'fct');
-              if (fct) {
-                const { removeAttachment } = useProcesses();
-                removeAttachment(process.id, fct.id);
-              }
+              if (fct) removeAttachment(process.id, fct.id);
             }}
           />
         </div>
