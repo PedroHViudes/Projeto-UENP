@@ -15,7 +15,7 @@ interface ProcessActionsProps {
 
 export function ProcessActions({ process }: ProcessActionsProps) {
   const { user } = useAuth();
-  const { advanceProcess, addObservation, addAttachment } = useProcesses();
+  const { advanceProcess, addObservation, addAttachment, removeAttachment } = useProcesses();
   const { toast } = useToast();
   const [notes, setNotes] = useState('');
   const [obsText, setObsText] = useState('');
