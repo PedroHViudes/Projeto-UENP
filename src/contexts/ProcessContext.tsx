@@ -113,6 +113,18 @@ export function ProcessProvider({ children }: { children: ReactNode }) {
     return map[user.role] || user.role;
   };
 
+  const sendNotification = async (data: {
+    processNumber: string; itemName: string; quantity: number;
+    destination: string; currentStatus: string; action: string;
+    userName: string; sector: string; notes?: string; agreement?: string;
+  }) => {
+    try {
+      await supabase.functions.invoke('send-process-notification', { body: data });
+    } catch (err) {
+      console.error('Failed to send notification:', err);
+    }
+  };
+
  const addProcess = async (data: {
     processNumber: string; itemName: string; quantity: number;
     destination: string; isIT: boolean;
@@ -141,58 +153,36 @@ export function ProcessProvider({ children }: { children: ReactNode }) {
     }
 
     // 2. Criar as entradas de timeline e anexos apenas se houver anexo
-    const operations = [
-      supabase.from('timeline_entries').insert({
-        process_id: proc.id,
-        status: 'aguardando_recebimento',
-        sector: 'Planejamento',
-        user_id: user.id,
-        user_name: user.name,
-        notes: 'Registro de compra realizada',
-        attachment_file_name: data.attachment?.fileName || null,
-        attachment_url: data.attachment?.fileUrl || null,
-      })
-    ];
+    await supabase.from('timeline_entries').insert({
+      process_id: proc.id,
+      status: 'aguardando_recebimento' as const,
+      sector: 'Planejamento',
+      user_id: user.id,
+      user_name: user.name,
+      notes: 'Registro de compra realizada',
+      attachment_file_name: data.attachment?.fileName || null,
+      attachment_url: data.attachment?.fileUrl || null,
+    });
 
     if (data.attachment) {
-      operations.push(
-        supabase.from('process_attachments').insert({
-          process_id: proc.id,
-          type: 'processo',
-          file_name: data.attachment.fileName,
-          file_url: data.attachment.fileUrl,
-          storage_path: data.attachment.storagePath,
-          uploaded_by: user.id,
-          uploaded_by_name: user.name,
-        })
-      );
+      await supabase.from('process_attachments').insert({
+        process_id: proc.id,
+        type: 'processo' as const,
+        file_name: data.attachment.fileName,
+        file_url: data.attachment.fileUrl,
+        storage_path: data.attachment.storagePath,
+        uploaded_by: user.id,
+        uploaded_by_name: user.name,
+      });
     }
 
-    await Promise.all(operations);
+    sendNotification({
+      processNumber: data.processNumber, itemName: data.itemName, quantity: data.quantity,
+      destination: data.destination, currentStatus: 'aguardando_recebimento',
+      action: 'Novo processo registrado', userName: user.name, sector: 'Planejamento',
+    });
 
-    // --- O PULO DO GATO PARA ATUALIZAÇÃO EM TEMPO REAL ---
-    
-    // Transformamos o retorno do banco no formato que o seu Frontend espera (CamelCase)
-    const newProcess: Process = {
-      id: proc.id,
-      processNumber: proc.process_number,
-      itemName: proc.item_name,
-      quantity: proc.quantity,
-      destination: proc.destination,
-      currentStatus: proc.current_status,
-      isIT: proc.is_it,
-      createdAt: proc.created_at,
-      updatedAt: proc.updated_at,
-      createdBy: proc.created_by,
-      createdByName: proc.created_by_name,
-      patrimonioConfirmed: proc.patrimonio_confirmed
-    };
-
-    // Atualizamos o estado local IMEDIATAMENTE
-    setProcesses(prev => [newProcess, ...prev]);
-    
-    // Opcional: manter o fetch para garantir sincronia total
-    // await fetchProcesses(); 
+    await fetchProcesses();
   };
   const updateProcess = async (processId: string, data: { processNumber: string; itemName: string; quantity: number; destination: string; isIT: boolean }) => {
     if (!user) return;
@@ -227,6 +217,14 @@ export function ProcessProvider({ children }: { children: ReactNode }) {
       notes: changes.length > 0
         ? `Processo editado por ${user.name}. Alterações: ${changes.join('; ')}`
         : `Processo editado por ${user.name} (sem alterações nos dados)`,
+    });
+
+    sendNotification({
+      processNumber: data.processNumber, itemName: data.itemName || p.itemName,
+      quantity: data.quantity || p.quantity, destination: data.destination || p.destination,
+      currentStatus: p.currentStatus, action: 'Processo editado',
+      userName: user.name, sector: getSectorName(),
+      notes: changes.length > 0 ? changes.join('; ') : undefined,
     });
 
     await fetchProcesses();
@@ -290,6 +288,13 @@ export function ProcessProvider({ children }: { children: ReactNode }) {
       agreement: agreement || null,
     });
 
+    sendNotification({
+      processNumber: p.processNumber, itemName: p.itemName, quantity: p.quantity,
+      destination: p.destination, currentStatus: action === 'confirmar_patrimonio' ? p.currentStatus : newStatus,
+      action: action, userName: user.name, sector,
+      notes, agreement,
+    });
+
     await fetchProcesses();
   };
 
@@ -304,6 +309,13 @@ export function ProcessProvider({ children }: { children: ReactNode }) {
       sector: getSectorName(),
       user_id: user.id,
       user_name: user.name,
+      notes,
+    });
+
+    sendNotification({
+      processNumber: p.processNumber, itemName: p.itemName, quantity: p.quantity,
+      destination: p.destination, currentStatus: p.currentStatus,
+      action: 'Observação registrada', userName: user.name, sector: getSectorName(),
       notes,
     });
 
