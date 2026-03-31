@@ -219,6 +219,14 @@ export function ProcessProvider({ children }: { children: ReactNode }) {
         : `Processo editado por ${user.name} (sem alterações nos dados)`,
     });
 
+    sendNotification({
+      processNumber: data.processNumber, itemName: data.itemName || p.itemName,
+      quantity: data.quantity || p.quantity, destination: data.destination || p.destination,
+      currentStatus: p.currentStatus, action: 'Processo editado',
+      userName: user.name, sector: getSectorName(),
+      notes: changes.length > 0 ? changes.join('; ') : undefined,
+    });
+
     await fetchProcesses();
   };
 
