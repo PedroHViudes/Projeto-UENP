@@ -1,4 +1,5 @@
 import { corsHeaders } from '@supabase/supabase-js/cors'
+import nodemailer from 'npm:nodemailer@6.9.16'
 
 const GMAIL_USER = 'sistema.processos.cj@uenp.edu.br'
 
@@ -35,87 +36,6 @@ const STATUS_SECTOR_MAP: Record<string, string> = {
   entregue: 'Concluído',
 }
 
-async function sendEmail(to: string, subject: string, html: string) {
-  const password = Deno.env.get('GMAIL_APP_PASSWORD')
-  if (!password) {
-    console.error('GMAIL_APP_PASSWORD not set')
-    return
-  }
-
-  // Use Gmail SMTP via a fetch to a simple SMTP relay approach
-  // Since Deno edge functions can't do raw SMTP, we use the Gmail API via OAuth or 
-  // a simpler approach: use nodemailer-compatible SMTP via a raw TCP connection
-  // Instead, let's use the Gmail SMTP with base64 encoded credentials
-
-  const encoder = new TextEncoder()
-  
-  const boundary = `----=_Part_${crypto.randomUUID()}`
-  
-  const emailRaw = [
-    `From: TrackFlow <${GMAIL_USER}>`,
-    `To: ${to}`,
-    `Subject: =?UTF-8?B?${btoa(unescape(encodeURIComponent(subject)))}?=`,
-    `MIME-Version: 1.0`,
-    `Content-Type: text/html; charset=UTF-8`,
-    `Content-Transfer-Encoding: base64`,
-    ``,
-    btoa(unescape(encodeURIComponent(html))),
-  ].join('\r\n')
-
-  // Use Gmail API with App Password via SMTP
-  // Since direct SMTP isn't available in Deno Deploy, we'll use a workaround
-  // by connecting to smtp.gmail.com via Deno.connect (TCP)
-  
-  try {
-    const conn = await Deno.connect({ hostname: 'smtp.gmail.com', port: 465 })
-    // For SSL/TLS we need startTls
-    const tlsConn = await Deno.connectTls({ hostname: 'smtp.gmail.com', port: 465 })
-    
-    const read = async (): Promise<string> => {
-      const buf = new Uint8Array(1024)
-      const n = await tlsConn.read(buf)
-      return new TextDecoder().decode(buf.subarray(0, n || 0))
-    }
-    
-    const write = async (data: string) => {
-      await tlsConn.write(encoder.encode(data + '\r\n'))
-    }
-
-    await read() // greeting
-    await write(`EHLO localhost`)
-    await read()
-    
-    // AUTH LOGIN
-    await write(`AUTH LOGIN`)
-    await read()
-    await write(btoa(GMAIL_USER))
-    await read()
-    await write(btoa(password))
-    await read()
-    
-    // MAIL FROM
-    await write(`MAIL FROM:<${GMAIL_USER}>`)
-    await read()
-    
-    // RCPT TO
-    await write(`RCPT TO:<${to}>`)
-    await read()
-    
-    // DATA
-    await write(`DATA`)
-    await read()
-    await write(emailRaw + '\r\n.')
-    await read()
-    
-    await write(`QUIT`)
-    tlsConn.close()
-    
-    console.log(`Email sent to ${to}`)
-  } catch (err) {
-    console.error(`Failed to send email to ${to}:`, err)
-  }
-}
-
 function buildEmailHtml(data: {
   processNumber: string
   itemName: string
@@ -129,7 +49,7 @@ function buildEmailHtml(data: {
   agreement?: string
 }): string {
   const statusLabel = STATUS_LABELS[data.currentStatus] || data.currentStatus
-  
+
   return `
 <!DOCTYPE html>
 <html>
@@ -169,26 +89,40 @@ Deno.serve(async (req) => {
     const body = await req.json()
     const { processNumber, itemName, quantity, destination, currentStatus, action, userName, sector, notes, agreement } = body
 
+    const password = Deno.env.get('GMAIL_APP_PASSWORD')
+    if (!password) {
+      throw new Error('GMAIL_APP_PASSWORD not configured')
+    }
+
+    const transporter = nodemailer.createTransport({
+      host: 'smtp.gmail.com',
+      port: 465,
+      secure: true,
+      auth: {
+        user: GMAIL_USER,
+        pass: password,
+      },
+    })
+
     const html = buildEmailHtml({ processNumber, itemName, quantity, destination, currentStatus, action, userName, sector, notes, agreement })
     const subject = `[TrackFlow] ${STATUS_LABELS[currentStatus] || currentStatus} - Processo ${processNumber}`
 
-    // Determine recipient sector based on current status
     const responsibleSector = STATUS_SECTOR_MAP[currentStatus] || sector
     const recipientEmail = SECTOR_EMAILS[responsibleSector]
 
-    const emailPromises: Promise<void>[] = []
+    const recipients = new Set<string>()
+    if (recipientEmail) recipients.add(recipientEmail)
+    if (ADMIN_EMAIL) recipients.add(ADMIN_EMAIL)
 
-    // Send to responsible sector
-    if (recipientEmail) {
-      emailPromises.push(sendEmail(recipientEmail, subject, html))
+    for (const to of recipients) {
+      await transporter.sendMail({
+        from: `TrackFlow <${GMAIL_USER}>`,
+        to,
+        subject,
+        html,
+      })
+      console.log(`Email sent to ${to}`)
     }
-
-    // Always send to admin (if not the same as sector email)
-    if (ADMIN_EMAIL && ADMIN_EMAIL !== recipientEmail) {
-      emailPromises.push(sendEmail(ADMIN_EMAIL, subject, html))
-    }
-
-    await Promise.all(emailPromises)
 
     return new Response(JSON.stringify({ success: true }), {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
