@@ -288,6 +288,13 @@ export function ProcessProvider({ children }: { children: ReactNode }) {
       agreement: agreement || null,
     });
 
+    sendNotification({
+      processNumber: p.processNumber, itemName: p.itemName, quantity: p.quantity,
+      destination: p.destination, currentStatus: action === 'confirmar_patrimonio' ? p.currentStatus : newStatus,
+      action: action, userName: user.name, sector,
+      notes, agreement,
+    });
+
     await fetchProcesses();
   };
 
