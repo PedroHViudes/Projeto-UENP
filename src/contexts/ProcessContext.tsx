@@ -113,6 +113,18 @@ export function ProcessProvider({ children }: { children: ReactNode }) {
     return map[user.role] || user.role;
   };
 
+  const sendNotification = async (data: {
+    processNumber: string; itemName: string; quantity: number;
+    destination: string; currentStatus: string; action: string;
+    userName: string; sector: string; notes?: string; agreement?: string;
+  }) => {
+    try {
+      await supabase.functions.invoke('send-process-notification', { body: data });
+    } catch (err) {
+      console.error('Failed to send notification:', err);
+    }
+  };
+
  const addProcess = async (data: {
     processNumber: string; itemName: string; quantity: number;
     destination: string; isIT: boolean;
