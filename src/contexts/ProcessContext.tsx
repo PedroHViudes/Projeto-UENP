@@ -176,6 +176,12 @@ export function ProcessProvider({ children }: { children: ReactNode }) {
       });
     }
 
+    sendNotification({
+      processNumber: data.processNumber, itemName: data.itemName, quantity: data.quantity,
+      destination: data.destination, currentStatus: 'aguardando_recebimento',
+      action: 'Novo processo registrado', userName: user.name, sector: 'Planejamento',
+    });
+
     await fetchProcesses();
   };
   const updateProcess = async (processId: string, data: { processNumber: string; itemName: string; quantity: number; destination: string; isIT: boolean }) => {
