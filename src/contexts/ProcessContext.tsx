@@ -312,6 +312,13 @@ export function ProcessProvider({ children }: { children: ReactNode }) {
       notes,
     });
 
+    sendNotification({
+      processNumber: p.processNumber, itemName: p.itemName, quantity: p.quantity,
+      destination: p.destination, currentStatus: p.currentStatus,
+      action: 'Observação registrada', userName: user.name, sector: getSectorName(),
+      notes,
+    });
+
     await fetchProcesses();
   };
 
