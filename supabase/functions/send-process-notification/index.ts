@@ -1,4 +1,7 @@
-import { corsHeaders } from '@supabase/supabase-js/cors'
+const corsHeaders = {
+  'Access-Control-Allow-Origin': '*',
+  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
+}
 import nodemailer from 'npm:nodemailer@6.9.16'
 
 const GMAIL_USER = 'sistema.processos.cj@uenp.edu.br'
